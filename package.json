@@ -1,5 +1,5 @@
 {
-  "name": "unified-server-dashboard",
+  "name": "metflix_dashboard",
   "version": "1.0.0",
   "description": "Unified PWA for managing qBittorrent, WireGuard, and OMV servers",
   "private": true,

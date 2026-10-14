@@ -36,7 +36,7 @@ function App() {
       <BrowserRouter>
         <div className="app">
           <nav className="navbar">
-            <h1>📱 Server Dashboard</h1>
+            <h1>📱 MetFlix Dashboard</h1>
             <div className="nav-links">
               <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>
                 <span>🏠</span>

@@ -335,9 +335,7 @@ router.post('/torrents/:action', async (req, res) => {
 router.get('/search/plugins', async (req, res) => {
   try {
     const serverUrl = getServerUrl();
-    const response = await axios.get(`${serverUrl}/api/v2/search/plugins`, {
-      timeout: 5000
-    });
+    const response = await makeAuthenticatedRequest('GET', `${serverUrl}/api/v2/search/plugins`);
     res.json(response.data);
   } catch (error) {
     res.status(500).json({ error: error.message });

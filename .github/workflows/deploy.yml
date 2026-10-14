@@ -1,0 +1,68 @@
+# Builds and deploys the dashboard to the Windows server on every push to main.
+# Runs on the self-hosted runner installed by deploy/windows/setup.ps1.
+#
+# Security: this repo is public and the runner lives on the home server, so the
+# workflow only runs on push/manual trigger — never on pull_request.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  DEPLOY_DIR: C:\metflix_dashboard\app
+  TASK_NAME: metflix_dashboard
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, windows, dashboard]
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Node.js to PATH
+        run: Add-Content $env:GITHUB_PATH "C:\Program Files\nodejs"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Stop dashboard
+        run: Stop-ScheduledTask -TaskName $env:TASK_NAME -ErrorAction SilentlyContinue
+
+      - name: Copy files
+        run: |
+          # .env and node_modules on the server are kept; everything else mirrors the repo
+          robocopy backend "$env:DEPLOY_DIR\backend" /MIR /XD node_modules data /XF .env /NFL /NDL /NJH /NP
+          if ($LASTEXITCODE -ge 8) { exit $LASTEXITCODE }
+          robocopy frontend\dist "$env:DEPLOY_DIR\frontend\dist" /MIR /NFL /NDL /NJH /NP
+          if ($LASTEXITCODE -ge 8) { exit $LASTEXITCODE }
+          exit 0
+
+      - name: Install production dependencies
+        working-directory: ${{ env.DEPLOY_DIR }}\backend
+        run: npm install --omit=dev --no-audit --no-fund
+
+      - name: Start dashboard
+        run: Start-ScheduledTask -TaskName $env:TASK_NAME
+
+      - name: Health check
+        run: |
+          for ($i = 0; $i -lt 15; $i++) {
+            try {
+              $r = Invoke-RestMethod http://localhost:3001/api/health -TimeoutSec 3
+              Write-Host "Dashboard is up: $($r | ConvertTo-Json -Compress)"
+              exit 0
+            } catch { Start-Sleep 2 }
+          }
+          Write-Error "Dashboard did not respond on port 3001"
+          exit 1

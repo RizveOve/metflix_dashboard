@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Unified Server Dashboard',
-        short_name: 'Server Dashboard',
+        name: 'MetFlix Dashboard',
+        short_name: 'MetFlix',
         description: 'Manage qBittorrent, WireGuard, and OMV servers',
         theme_color: '#1a1a2e',
         background_color: '#0f0f0f',
@@ -34,7 +34,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: `http://localhost:${process.env.BACKEND_PORT || 3001}`,
         changeOrigin: true
       }
     }

@@ -1,4 +1,4 @@
-# Unified Server Dashboard
+# MetFlix Dashboard
 
 A Progressive Web App (PWA) dashboard for managing media server infrastructure: qBittorrent torrents, Plex media library, system resources, and VPN status — all in one unified interface.
 
@@ -25,7 +25,7 @@ A Progressive Web App (PWA) dashboard for managing media server infrastructure: 
 ```bash
 # Clone repository
 git clone <repo-url>
-cd "Unified Server Dashboard"
+cd metflix_dashboard
 
 # Frontend build
 cd frontend
@@ -71,7 +71,7 @@ sudo systemctl enable dashboard
 
 ```ini
 [Unit]
-Description=Unified Server Dashboard
+Description=MetFlix Dashboard
 After=network.target docker.service
 Wants=docker.service
 

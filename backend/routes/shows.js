@@ -3,9 +3,13 @@ import fs from 'fs/promises';
 import axios from 'axios';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import path from 'path';
 
 const router = express.Router();
-const SHOWS_DB_PATH = '/opt/server-dashboard/data/shows.json';
+// DATA_DIR / DOWNLOAD_PATH let the server run outside Linux (e.g. Windows)
+const DATA_DIR = process.env.DATA_DIR || '/opt/metflix_dashboard/data';
+const SHOWS_DB_PATH = path.join(DATA_DIR, 'shows.json');
+const DOWNLOAD_PATH = process.env.DOWNLOAD_PATH || '/media';
 const execAsync = promisify(exec);
 
 // TMDB API configuration - loaded dynamically to ensure dotenv is initialized
@@ -521,7 +525,7 @@ setTimeout(() => {
 // Ensure data directory exists
 const ensureDataDir = async () => {
   try {
-    await fs.mkdir('/opt/server-dashboard/data', { recursive: true });
+    await fs.mkdir(DATA_DIR, { recursive: true });
   } catch (error) {
     // Directory already exists
   }
@@ -690,10 +694,8 @@ const shouldTryNextSeason = async (tmdbId, currentSeason, currentEpisode) => {
 // Check available disk space
 const checkDiskSpace = async () => {
   try {
-    const { stdout } = await execAsync('df -h /media | tail -1');
-    const parts = stdout.trim().split(/\s+/);
-    const available = parts[3];
-    const availableGB = parseFloat(available.replace('G', ''));
+    const stats = await fs.statfs(DOWNLOAD_PATH);
+    const availableGB = (stats.bavail * stats.bsize) / 1024 ** 3;
     
     return availableGB > 5; // Require at least 5GB free space
   } catch (error) {

@@ -1,6 +1,6 @@
 {
-  "name": "Unified Server Dashboard",
-  "short_name": "Server Dashboard",
+  "name": "MetFlix Dashboard",
+  "short_name": "MetFlix",
   "description": "Manage qBittorrent, WireGuard, and OMV servers",
   "start_url": "/",
   "display": "standalone",

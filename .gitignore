@@ -49,4 +49,7 @@ coverage/
 *.ovpn
 scripts/
 DEPLOYED.md
-server-dashboard.service
+metflix_dashboard.service
+
+# Shows database
+backend/data/
