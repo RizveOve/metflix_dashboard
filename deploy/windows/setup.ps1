@@ -31,7 +31,8 @@ if ($nodeMajor -ge 20) {
   Step "Node.js already installed: $(& $node -v)"
 } else {
   Step 'Installing Node.js LTS (Vite needs Node 18+)'
-  $lts = (Invoke-RestMethod https://nodejs.org/dist/index.json | Where-Object { $_.lts } | Select-Object -First 1).version
+  # Parentheses make Windows PowerShell 5.1 enumerate the JSON array
+  $lts = ((Invoke-RestMethod https://nodejs.org/dist/index.json) | Where-Object { $_.lts } | Select-Object -First 1).version
   $msi = "$env:TEMP\node-$lts-x64.msi"
   Invoke-WebRequest "https://nodejs.org/dist/$lts/node-$lts-x64.msi" -OutFile $msi -UseBasicParsing
   Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn" -Wait
