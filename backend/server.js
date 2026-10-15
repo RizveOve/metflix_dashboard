@@ -1,11 +1,10 @@
+// Load .env first: imports are hoisted, so a dotenv.config() call in the body
+// would run after the route modules have already read process.env
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 import qbittorrentRoutes from './routes/qbittorrent.js';
 import omvRoutes from './routes/omv.js';
 import dockerRoutes from './routes/docker.js';

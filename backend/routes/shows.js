@@ -7,7 +7,8 @@ import path from 'path';
 
 const router = express.Router();
 // DATA_DIR / DOWNLOAD_PATH let the server run outside Linux (e.g. Windows)
-const DATA_DIR = process.env.DATA_DIR || '/opt/metflix_dashboard/data';
+const DEFAULT_DATA_DIR = '/opt/metflix_dashboard/data';
+const DATA_DIR = process.env.DATA_DIR || DEFAULT_DATA_DIR;
 const SHOWS_DB_PATH = path.join(DATA_DIR, 'shows.json');
 const DOWNLOAD_PATH = process.env.DOWNLOAD_PATH || '/media';
 const execAsync = promisify(exec);
@@ -523,11 +524,23 @@ setTimeout(() => {
 }, 1000);
 
 // Ensure data directory exists
+const fileExists = (file) => fs.access(file).then(() => true, () => false);
+
 const ensureDataDir = async () => {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
   } catch (error) {
     // Directory already exists
+  }
+
+  // Earlier builds ignored DATA_DIR (.env loaded too late) and saved to the
+  // default path; carry those shows over once
+  const legacyPath = path.resolve(DEFAULT_DATA_DIR, 'shows.json');
+  if (path.resolve(SHOWS_DB_PATH) !== legacyPath
+      && !(await fileExists(SHOWS_DB_PATH))
+      && await fileExists(legacyPath)) {
+    await fs.copyFile(legacyPath, SHOWS_DB_PATH).catch(error =>
+      console.error('Could not migrate shows database:', error.message));
   }
 };
 
@@ -691,13 +704,24 @@ const shouldTryNextSeason = async (tmdbId, currentSeason, currentEpisode) => {
   }
 };
 
-// Check available disk space
+// Check available disk space (require at least 5GB free).
+// Asks qBittorrent first: it reports free space on its own save drive, which
+// works even when this server can't see that drive (e.g. running as a Windows
+// service while downloads go to a user-mapped drive).
 const checkDiskSpace = async () => {
   try {
+    const response = await makeQBittorrentRequest('GET', `${getQBittorrentServerUrl()}/api/v2/sync/maindata?rid=0`);
+    const freeBytes = response.data?.server_state?.free_space_on_disk;
+    if (typeof freeBytes === 'number') {
+      return freeBytes / 1024 ** 3 > 5;
+    }
+  } catch (error) {
+    console.error('Error getting free space from qBittorrent:', error.message);
+  }
+
+  try {
     const stats = await fs.statfs(DOWNLOAD_PATH);
-    const availableGB = (stats.bavail * stats.bsize) / 1024 ** 3;
-    
-    return availableGB > 5; // Require at least 5GB free space
+    return (stats.bavail * stats.bsize) / 1024 ** 3 > 5;
   } catch (error) {
     console.error('Error checking disk space:', error);
     return false;
