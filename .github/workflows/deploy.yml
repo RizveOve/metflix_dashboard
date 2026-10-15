@@ -23,7 +23,8 @@ jobs:
     runs-on: [self-hosted, windows, dashboard]
     defaults:
       run:
-        shell: powershell
+        # Windows blocks .ps1 scripts by default; bypass the policy for step scripts only
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
     steps:
       - uses: actions/checkout@v4
 
