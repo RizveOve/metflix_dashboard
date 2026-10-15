@@ -6,12 +6,12 @@ import Sheet from '../components/Sheet';
 import ConfirmModal from '../components/ConfirmModal';
 import QueueSheet from '../components/QueueSheet';
 import ShowResults from '../components/ShowResults';
-import useShowSearch from '../lib/useShowSearch';
+import useTmdbSearch from '../lib/useTmdbSearch';
 import { episodeCode } from '../lib/format';
 
 function OngoingShows() {
   const { showToast } = useToast();
-  const search = useShowSearch();
+  const search = useTmdbSearch('shows');
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState(null);

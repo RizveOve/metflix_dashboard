@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 
-// Debounced TMDB show search
-export default function useShowSearch(delay = 300) {
+// Debounced TMDB search; kind is 'shows' or 'movies'
+export default function useTmdbSearch(kind = 'shows', delay = 300) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -18,16 +18,16 @@ export default function useShowSearch(delay = 300) {
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const res = await axios.get(`/api/shows/search/${encodeURIComponent(q)}`);
+        const res = await axios.get(`/api/${kind}/search/${encodeURIComponent(q)}`);
         if (!cancelled) setResults(res.data.results || []);
       } catch (error) {
-        console.error('Error searching shows:', error);
+        console.error(`Error searching ${kind}:`, error);
         if (!cancelled) setResults([]);
       }
       if (!cancelled) setLoading(false);
     }, delay);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, delay]);
+  }, [query, kind, delay]);
 
   const clear = () => { setQuery(''); setResults([]); };
 

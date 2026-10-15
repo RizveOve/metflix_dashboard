@@ -9,6 +9,7 @@ import qbittorrentRoutes from './routes/qbittorrent.js';
 import omvRoutes from './routes/omv.js';
 import dockerRoutes from './routes/docker.js';
 import showsRoutes from './routes/shows.js';
+import moviesRoutes from './routes/movies.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +31,7 @@ app.use('/api/qbittorrent', qbittorrentRoutes);
 app.use('/api/omv', omvRoutes);
 app.use('/api/docker', dockerRoutes);
 app.use('/api/shows', showsRoutes);
+app.use('/api/movies', moviesRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ 

@@ -1,8 +1,10 @@
 import { useState, useCallback, createContext, useContext } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
+import Home from './pages/Home';
+import Movies from './pages/Movies';
+import Shows from './pages/Shows';
 import Downloads from './pages/Downloads';
 import Search from './pages/Search';
-import Shows from './pages/Shows';
 import Settings from './pages/Settings';
 import Toast from './components/Toast';
 import Icon from './components/Icon';
@@ -20,10 +22,11 @@ export const useToast = () => {
 };
 
 const NAV = [
-  { to: '/', label: 'Downloads', icon: 'download', end: true },
-  { to: '/search', label: 'Search', icon: 'search' },
+  { to: '/', label: 'Home', icon: 'home', end: true },
+  { to: '/movies', label: 'Movies', icon: 'film' },
   { to: '/shows', label: 'Shows', icon: 'tv' },
-  { to: '/settings', label: 'Settings', icon: 'settings' },
+  { to: '/downloads', label: 'Downloads', icon: 'download' },
+  { to: '/search', label: 'Search', icon: 'search' },
 ];
 
 function App() {
@@ -44,7 +47,9 @@ function App() {
         <div className="app">
           <header className="topbar">
             <div className="topbar-inner">
-              <span className="brand"><span className="brand-dot" />MetFlix</span>
+              <Link to="/" className="logo" aria-label="MetFlix home">
+                <span className="logo-met">Met</span>Flix
+              </Link>
               <nav className="nav" aria-label="Main">
                 {NAV.map(item => (
                   <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">
@@ -53,17 +58,21 @@ function App() {
                   </NavLink>
                 ))}
               </nav>
+              <NavLink to="/settings" className="icon-btn settings-link" aria-label="Settings" title="Settings">
+                <Icon name="gear" size={19} />
+              </NavLink>
             </div>
           </header>
 
           <main className="page">
             <Routes>
-              <Route path="/" element={<Downloads />} />
-              <Route path="/search" element={<Search />} />
+              <Route path="/" element={<Home />} />
+              <Route path="/movies" element={<Movies />} />
               <Route path="/shows" element={<Shows />} />
+              <Route path="/downloads" element={<Downloads />} />
+              <Route path="/search" element={<Search />} />
               <Route path="/settings" element={<Settings />} />
-              {/* Old paths from the previous layout */}
-              <Route path="/downloads" element={<Navigate to="/" replace />} />
+              {/* Old path from the previous layout */}
               <Route path="/add-torrent" element={<Navigate to="/search" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

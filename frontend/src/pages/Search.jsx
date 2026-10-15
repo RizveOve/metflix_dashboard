@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useToast } from '../App';
 import Icon from '../components/Icon';
@@ -45,9 +45,22 @@ function Search() {
   const [magnet, setMagnet] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const pollRef = useRef(null);
+  const [searchParams] = useSearchParams();
 
   // Stop polling if the page is left mid-search
   useEffect(() => () => clearInterval(pollRef.current), []);
+
+  // Movies links here as /search?q=Title Year to pick a release by hand
+  const autoSearched = useRef(false);
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q && !autoSearched.current) {
+      autoSearched.current = true;
+      setSearchQuery(q);
+      searchTorrents(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const saveRecentSearch = (query) => {
     const updated = [query, ...recentSearches.filter(q => q !== query)].slice(0, 5);
@@ -159,7 +172,7 @@ function Search() {
         enableEpisodePriority: episodePriority
       });
       showToast('Added to downloads', 'success');
-      setTimeout(() => navigate('/'), 800);
+      setTimeout(() => navigate('/downloads'), 800);
     } catch (error) {
       const errorMsg = error.response?.data?.error || error.message;
       const details = error.response?.data?.details;
@@ -177,7 +190,7 @@ function Search() {
       await axios.post('/api/qbittorrent/torrents/add', { urls: magnet });
       setMagnet('');
       showToast('Added to downloads', 'success');
-      setTimeout(() => navigate('/'), 800);
+      setTimeout(() => navigate('/downloads'), 800);
     } catch (error) {
       showToast('Error adding torrent: ' + (error.response?.data?.error || error.message), 'error');
     }

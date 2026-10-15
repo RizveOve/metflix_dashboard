@@ -1479,6 +1479,33 @@ router.post('/config/tmdb', async (req, res) => {
   }
 });
 
+// Trending TV shows this week (home page)
+router.get('/trending', async (req, res) => {
+  try {
+    const apiKey = getTMDBApiKey();
+    if (!apiKey) {
+      return res.status(400).json({ error: 'TMDB API key not configured', results: [] });
+    }
+    const response = await axios.get('https://api.themoviedb.org/3/trending/tv/week', {
+      params: { api_key: apiKey },
+      timeout: 10000
+    });
+    const results = response.data.results.slice(0, 20).map(show => ({
+      id: show.id,
+      name: show.name,
+      overview: show.overview,
+      firstAirDate: show.first_air_date,
+      posterPath: show.poster_path,
+      backdropPath: show.backdrop_path,
+      voteAverage: show.vote_average
+    }));
+    res.json({ results });
+  } catch (error) {
+    console.error('Error fetching trending shows:', error.message);
+    res.status(500).json({ error: error.message, results: [] });
+  }
+});
+
 // Search TMDB for shows (live search)
 router.get('/search/:query', async (req, res) => {
   try {
@@ -1583,5 +1610,8 @@ router.post('/config/auto-check', (req, res) => {
     res.json({ success: true, message: 'Targeted episode checking disabled' });
   }
 });
+
+// Shared with the movies routes
+export { getQBittorrentServerUrl, makeQBittorrentRequest, addTorrent, checkDiskSpace };
 
 export default router;

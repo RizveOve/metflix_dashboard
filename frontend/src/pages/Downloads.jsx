@@ -112,8 +112,8 @@ function Downloads() {
               {selecting ? 'Done' : 'Select'}
             </button>
           )}
-          <Link to="/search" className="btn btn-primary">
-            <Icon name="plus" size={16} /> Add
+          <Link to="/search" className="btn btn-primary btn-add" aria-label="Add torrent">
+            <Icon name="plus" size={16} /><span className="hide-sm">Add</span>
           </Link>
         </div>
       </div>

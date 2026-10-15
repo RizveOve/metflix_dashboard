@@ -331,6 +331,21 @@ router.post('/torrents/:action', async (req, res) => {
   }
 });
 
+// Transfer speeds and free space on qBittorrent's save drive (home page)
+router.get('/summary', async (req, res) => {
+  try {
+    const response = await makeAuthenticatedRequest('GET', `${getServerUrl()}/api/v2/sync/maindata?rid=0`);
+    const state = response.data.server_state || {};
+    res.json({
+      downloadSpeed: state.dl_info_speed || 0,
+      uploadSpeed: state.up_info_speed || 0,
+      freeSpace: state.free_space_on_disk ?? null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get search plugins
 router.get('/search/plugins', async (req, res) => {
   try {

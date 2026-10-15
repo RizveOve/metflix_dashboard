@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import OngoingShows from './OngoingShows';
 import PastShows from './PastShows';
 
@@ -8,7 +9,9 @@ const TABS = [
 ];
 
 function Shows() {
-  const [activeTab, setActiveTab] = useState('ongoing');
+  // Home can link here with { tab, show } to open a show's full-season download
+  const { state } = useLocation();
+  const [activeTab, setActiveTab] = useState(state?.tab || 'ongoing');
   const tab = TABS.find(t => t.key === activeTab);
 
   return (
@@ -34,7 +37,7 @@ function Shows() {
         ))}
       </div>
 
-      {activeTab === 'ongoing' ? <OngoingShows /> : <PastShows />}
+      {activeTab === 'ongoing' ? <OngoingShows /> : <PastShows initialShow={state?.show} />}
     </div>
   );
 }

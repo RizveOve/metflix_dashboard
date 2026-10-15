@@ -3,13 +3,13 @@ import axios from 'axios';
 import { useToast } from '../App';
 import Icon from '../components/Icon';
 import ShowResults, { Poster } from '../components/ShowResults';
-import useShowSearch from '../lib/useShowSearch';
+import useTmdbSearch from '../lib/useTmdbSearch';
 import { year } from '../lib/format';
 
-function PastShows() {
+function PastShows({ initialShow = null }) {
   const { showToast } = useToast();
-  const search = useShowSearch();
-  const [selectedShow, setSelectedShow] = useState(null);
+  const search = useTmdbSearch('shows');
+  const [selectedShow, setSelectedShow] = useState(initialShow);
   const [seasonNumber, setSeasonNumber] = useState(1);
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState({ message: '', percent: 0 });
