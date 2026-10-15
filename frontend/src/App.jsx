@@ -1,11 +1,11 @@
-import React, { useState, createContext, useContext } from 'react';
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import MyDownloads from './pages/MyDownloads';
-import AddTorrent from './pages/AddTorrent';
-import TVShows from './pages/TVShows';
-
+import { useState, useCallback, createContext, useContext } from 'react';
+import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import Downloads from './pages/Downloads';
+import Search from './pages/Search';
+import Shows from './pages/Shows';
+import Settings from './pages/Settings';
 import Toast from './components/Toast';
+import Icon from './components/Icon';
 import './App.css';
 
 // Toast context for global toast notifications
@@ -19,63 +19,59 @@ export const useToast = () => {
   return context;
 };
 
+const NAV = [
+  { to: '/', label: 'Downloads', icon: 'download', end: true },
+  { to: '/search', label: 'Search', icon: 'search' },
+  { to: '/shows', label: 'Shows', icon: 'tv' },
+  { to: '/settings', label: 'Settings', icon: 'settings' },
+];
+
 function App() {
   const [toasts, setToasts] = useState([]);
 
-  const showToast = (message, type = 'info', duration = 3000) => {
-    const id = Date.now();
+  const showToast = useCallback((message, type = 'info', duration = 3000) => {
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type, duration }]);
-  };
+  }, []);
 
-  const removeToast = (id) => {
+  const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
-  };
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       <BrowserRouter>
         <div className="app">
-          <nav className="navbar">
-            <h1>📱 MetFlix Dashboard</h1>
-            <div className="nav-links">
-              <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>
-                <span>🏠</span>
-                <span className="nav-text">Home</span>
-              </NavLink>
-              <NavLink to="/shows" className={({ isActive }) => isActive ? 'active' : ''}>
-                <span>📺</span>
-                <span className="nav-text">Shows</span>
-              </NavLink>
-              <NavLink to="/downloads" className={({ isActive }) => isActive ? 'active' : ''}>
-                <span>📥</span>
-                <span className="nav-text">Downloads</span>
-              </NavLink>
-              <NavLink to="/add-torrent" className={({ isActive }) => isActive ? 'active' : ''}>
-                <span>🔍</span>
-                <span className="nav-text">Manual</span>
-              </NavLink>
+          <header className="topbar">
+            <div className="topbar-inner">
+              <span className="brand"><span className="brand-dot" />MetFlix</span>
+              <nav className="nav" aria-label="Main">
+                {NAV.map(item => (
+                  <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">
+                    <Icon name={item.icon} size={20} />
+                    <span>{item.label}</span>
+                  </NavLink>
+                ))}
+              </nav>
             </div>
-          </nav>
-          
-          <main className="main-content">
+          </header>
+
+          <main className="page">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/downloads" element={<MyDownloads />} />
-              <Route path="/add-torrent" element={<AddTorrent />} />
-              <Route path="/shows" element={<TVShows />} />
+              <Route path="/" element={<Downloads />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/shows" element={<Shows />} />
+              <Route path="/settings" element={<Settings />} />
+              {/* Old paths from the previous layout */}
+              <Route path="/downloads" element={<Navigate to="/" replace />} />
+              <Route path="/add-torrent" element={<Navigate to="/search" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
 
-          {/* Toast notifications */}
-          <div className="toast-container">
-            {toasts.map((toast) => (
-              <Toast
-                key={toast.id}
-                message={toast.message}
-                type={toast.type}
-                duration={toast.duration}
-                onClose={() => removeToast(toast.id)}
-              />
+          <div className="toasts">
+            {toasts.map(toast => (
+              <Toast key={toast.id} {...toast} onClose={removeToast} />
             ))}
           </div>
         </div>

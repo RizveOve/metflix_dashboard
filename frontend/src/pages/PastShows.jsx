@@ -1,372 +1,146 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useToast } from '../App';
+import Icon from '../components/Icon';
+import ShowResults, { Poster } from '../components/ShowResults';
+import useShowSearch from '../lib/useShowSearch';
+import { year } from '../lib/format';
 
 function PastShows() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const { showToast } = useToast();
+  const search = useShowSearch();
   const [selectedShow, setSelectedShow] = useState(null);
   const [seasonNumber, setSeasonNumber] = useState(1);
   const [downloading, setDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState('');
-  const [progressPercent, setProgressPercent] = useState(0);
-  const [sessionId, setSessionId] = useState(null);
-  const { showToast } = useToast();
+  const [progress, setProgress] = useState({ message: '', percent: 0 });
+  const pollRef = useRef(null);
 
-  const searchShows = async (query) => {
-    if (!query || query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-
-    setSearchLoading(true);
-    try {
-      const response = await axios.get(`/api/shows/search/${encodeURIComponent(query)}`);
-      setSearchResults(response.data.results || []);
-    } catch (error) {
-      console.error('Error searching shows:', error);
-      setSearchResults([]);
-      showToast('Error searching shows: ' + error.message, 'error');
-    }
-    setSearchLoading(false);
-  };
+  useEffect(() => () => clearTimeout(pollRef.current), []);
 
   const selectShow = (show) => {
     setSelectedShow(show);
-    setSearchResults([]);
+    setSeasonNumber(1);
+    search.clear();
+  };
+
+  const finish = () => {
+    // Leave the final message visible briefly before resetting
+    pollRef.current = setTimeout(() => {
+      setDownloading(false);
+      setProgress({ message: '', percent: 0 });
+    }, 3000);
   };
 
   const downloadSeason = async () => {
-    if (!selectedShow || !seasonNumber) {
-      showToast('Please select a show and season number', 'error');
-      return;
-    }
-
     setDownloading(true);
-    setDownloadProgress('Starting download...');
-    setProgressPercent(0);
+    setProgress({ message: 'Starting…', percent: 0 });
 
     try {
       const response = await axios.post('/api/shows/download-season', {
         tmdbId: selectedShow.id,
         showName: selectedShow.name,
         season: seasonNumber,
-        enableEpisodePriority: true  // Always enable for TV show seasons
+        enableEpisodePriority: true // Always on for season downloads
       });
 
-      if (response.data.success && response.data.sessionId) {
-        const currentSessionId = response.data.sessionId;
-        setSessionId(currentSessionId);
-        
-        const pollProgress = async () => {
-          try {
-            const progressResponse = await axios.get(`/api/shows/download-progress/${currentSessionId}`);
-            const progress = progressResponse.data;
-            
-            setDownloadProgress(progress.message || 'Processing...');
-            setProgressPercent(progress.progress || 0);
-            
-            if (progress.status === 'completed') {
-              if (progress.success) {
-                const downloads = progress.downloads || [];
-                if (downloads.length > 0) {
-                  showToast(`Downloaded ${downloads.length} items!`, 'success');
-                } else {
-                  showToast(`Download completed`, 'success');
-                }
-              } else {
-                showToast(progress.message || 'No high-quality content found', 'warning');
-                if (progress.qualityNote) {
-                  showToast(progress.qualityNote, 'info');
-                }
-              }
-              return;
-            } else if (progress.status === 'error') {
-              showToast(`Download failed: ${progress.message}`, 'error');
-              return;
-            }
-            
-            if (progress.status === 'searching' || progress.status === 'downloading') {
-              setTimeout(pollProgress, 2000);
-            }
-          } catch (pollError) {
-            console.error('Error polling progress:', pollError);
-            showToast('Error tracking download progress', 'warning');
-          }
-        };
-        
-        setTimeout(pollProgress, 1000);
-        
-      } else {
+      if (!response.data.success || !response.data.sessionId) {
         showToast('Failed to start download', 'error');
+        finish();
+        return;
       }
+
+      const sessionId = response.data.sessionId;
+      const poll = async () => {
+        try {
+          const { data } = await axios.get(`/api/shows/download-progress/${sessionId}`);
+          setProgress({ message: data.message || 'Working…', percent: data.progress || 0 });
+
+          if (data.status === 'completed') {
+            if (data.success) {
+              const count = (data.downloads || []).length;
+              showToast(count > 0 ? `Added ${count} downloads` : 'Download complete', 'success');
+            } else {
+              showToast(data.message || 'No high-quality release found', 'warning');
+              if (data.qualityNote) showToast(data.qualityNote, 'info');
+            }
+            finish();
+          } else if (data.status === 'error') {
+            showToast(`Download failed: ${data.message}`, 'error');
+            finish();
+          } else if (data.status === 'searching' || data.status === 'downloading') {
+            pollRef.current = setTimeout(poll, 2000);
+          } else {
+            finish();
+          }
+        } catch (error) {
+          console.error('Error polling progress:', error);
+          showToast('Lost track of download progress', 'warning');
+          finish();
+        }
+      };
+      pollRef.current = setTimeout(poll, 1000);
     } catch (error) {
       showToast('Error starting download: ' + (error.response?.data?.error || error.message), 'error');
-    } finally {
-      setTimeout(() => {
-        setDownloading(false);
-        setDownloadProgress('');
-        setProgressPercent(0);
-        setSessionId(null);
-      }, 3000);
+      finish();
     }
   };
 
-  const clearSelection = () => {
-    setSelectedShow(null);
-    setSearchQuery('');
-    setSearchResults([]);
-    setSeasonNumber(1);
-  };
-
   return (
-    <div>
-      {/* Search Section */}
-      <div className="card">
-        <h2>🔍 Search TV Shows</h2>
-        <p style={{ color: '#b0b0c0', fontSize: '0.875rem', marginBottom: '1rem' }}>
-          Search for TV shows to download complete seasons
-        </p>
-        
-        {/* Search Input */}
-        <div className="mobile-search-container">
-          <div className="mobile-search-icon">🔍</div>
-          <input
-            className="mobile-search-input"
-            type="text"
-            placeholder="Search shows..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              searchShows(e.target.value);
-            }}
-          />
-          {searchLoading && (
-            <div style={{ 
-              position: 'absolute', 
-              right: '1rem', 
-              top: '50%', 
-              transform: 'translateY(-50%)',
-              color: '#667eea'
-            }}>
-              <div className="spinner"></div>
+    <>
+      {!selectedShow ? (
+        <ShowResults search={search} placeholder="Search TV shows…" onPick={selectShow} />
+      ) : (
+        <div className="card selected-show">
+          <div className="selected-show-info">
+            <Poster path={selectedShow.posterPath} alt={selectedShow.name} size="w154" className="poster-lg" />
+            <div className="row-main">
+              <h2 className="selected-title">{selectedShow.name}</h2>
+              <div className="row-meta">
+                {year(selectedShow.firstAirDate) && <span>{year(selectedShow.firstAirDate)}</span>}
+                {selectedShow.voteAverage > 0 && <span>★ {selectedShow.voteAverage.toFixed(1)}</span>}
+              </div>
+              {selectedShow.overview && <p className="row-desc clamp-3">{selectedShow.overview}</p>}
+            </div>
+          </div>
+
+          <div className="season-picker">
+            <span className="field-label">Season</span>
+            <div className="stepper">
+              <button className="icon-btn" onClick={() => setSeasonNumber(Math.max(1, seasonNumber - 1))}
+                disabled={seasonNumber <= 1 || downloading} aria-label="Previous season">
+                <Icon name="minus" size={16} />
+              </button>
+              <span className="stepper-value">{seasonNumber}</span>
+              <button className="icon-btn" onClick={() => setSeasonNumber(Math.min(20, seasonNumber + 1))}
+                disabled={seasonNumber >= 20 || downloading} aria-label="Next season">
+                <Icon name="plus" size={16} />
+              </button>
+            </div>
+          </div>
+
+          {downloading && (
+            <div className="season-progress">
+              <div className="season-progress-text">
+                <span>{progress.message}</span>
+                <span className="muted">{Math.round(progress.percent)}%</span>
+              </div>
+              <div className="progress"><div className="progress-fill tone-active" style={{ width: `${progress.percent}%` }} /></div>
             </div>
           )}
-        </div>
 
-        {/* Search Results */}
-        {searchResults.length > 0 && (
-          <div style={{ 
-            maxHeight: '300px', 
-            overflowY: 'auto', 
-            marginTop: '1rem',
-            border: '1px solid #2a2a3e',
-            borderRadius: '12px'
-          }}>
-            {searchResults.map((show) => (
-              <div
-                key={show.id}
-                onClick={() => selectShow(show)}
-                className="mobile-list-item"
-                style={{
-                  background: selectedShow?.id === show.id ? 'rgba(102, 126, 234, 0.2)' : 'rgba(255,255,255,0.02)',
-                  cursor: 'pointer'
-                }}
-              >
-                {show.posterPath && (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w92${show.posterPath}`}
-                    alt={show.name}
-                    style={{ 
-                      width: '40px', 
-                      height: '60px', 
-                      borderRadius: '8px', 
-                      objectFit: 'cover',
-                      flexShrink: 0
-                    }}
-                  />
-                )}
-                <div className="mobile-list-content">
-                  <div className="mobile-list-title text-wrap">{show.name}</div>
-                  <div className="mobile-list-subtitle">
-                    {show.firstAirDate && `${new Date(show.firstAirDate).getFullYear()}`}
-                    {show.voteAverage && ` • ${show.voteAverage.toFixed(1)}/10`}
-                  </div>
-                  {show.overview && (
-                    <div className="mobile-list-subtitle text-truncate">
-                      {show.overview.length > 100 ? show.overview.substring(0, 100) + '...' : show.overview}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Selected Show */}
-      {selectedShow && (
-        <div className="card" style={{ 
-          background: 'rgba(76, 175, 80, 0.1)', 
-          borderColor: '#4caf50'
-        }}>
-          <h2>✅ Selected Show</h2>
-          
-          <div className="mobile-card mb-2">
-            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
-              {selectedShow.posterPath && (
-                <img
-                  src={`https://image.tmdb.org/t/p/w154${selectedShow.posterPath}`}
-                  alt={selectedShow.name}
-                  style={{ 
-                    width: '60px', 
-                    height: '90px', 
-                    borderRadius: '8px', 
-                    objectFit: 'cover',
-                    flexShrink: 0
-                  }}
-                />
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="mobile-list-title text-wrap" style={{ color: '#4caf50', marginBottom: '0.5rem' }}>
-                  {selectedShow.name}
-                </div>
-                <div className="mobile-list-subtitle">
-                  {selectedShow.firstAirDate && `${new Date(selectedShow.firstAirDate).getFullYear()}`}
-                  {selectedShow.voteAverage && ` • ${selectedShow.voteAverage.toFixed(1)}/10`}
-                </div>
-                {selectedShow.overview && (
-                  <div className="mobile-list-subtitle text-wrap" style={{ marginTop: '0.5rem' }}>
-                    {selectedShow.overview}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Season Selection */}
-            <div className="form-group">
-              <label className="form-label">Season Number</label>
-              <div className="number-picker">
-                <button 
-                  className="number-picker-btn" 
-                  onClick={() => setSeasonNumber(Math.max(1, seasonNumber - 1))}
-                  disabled={seasonNumber <= 1}
-                >
-                  −
-                </button>
-                <div className="number-picker-value">
-                  {seasonNumber}
-                </div>
-                <button 
-                  className="number-picker-btn" 
-                  onClick={() => setSeasonNumber(Math.min(20, seasonNumber + 1))}
-                  disabled={seasonNumber >= 20}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Progress */}
-            {downloading && (
-              <div className="mb-2">
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  marginBottom: '0.5rem'
-                }}>
-                  <span style={{ color: '#667eea', fontSize: '0.875rem', fontWeight: '600' }}>
-                    {downloadProgress || 'Processing...'}
-                  </span>
-                  <span style={{ color: '#b0b0c0', fontSize: '0.75rem' }}>
-                    {Math.round(progressPercent)}%
-                  </span>
-                </div>
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: `${progressPercent}%` }} 
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Actions */}
-            <div className="mobile-grid-2">
-              <button 
-                className="button" 
-                onClick={downloadSeason}
-                disabled={downloading}
-                style={{ 
-                  background: downloading ? '#ff9800' : '#4caf50',
-                  opacity: downloading ? 0.8 : 1
-                }}
-              >
-                <span>{downloading ? '⬇️' : '📥'}</span>
-                <span>{downloading ? 'Downloading' : 'Download'}</span>
-              </button>
-              <button 
-                className="button button-secondary" 
-                onClick={clearSelection}
-                disabled={downloading}
-                style={{ opacity: downloading ? 0.5 : 1 }}
-              >
-                <span>🗑️</span>
-                <span>Clear</span>
-              </button>
-            </div>
+          <div className="panel-actions">
+            <button className="btn" onClick={() => setSelectedShow(null)} disabled={downloading}>Back</button>
+            <button className="btn btn-primary" onClick={downloadSeason} disabled={downloading}>
+              {downloading ? <span className="spinner" /> : <><Icon name="download" size={16} /> Download season {seasonNumber}</>}
+            </button>
           </div>
         </div>
       )}
 
-      {/* How It Works */}
-      <div className="card">
-        <h2>ℹ️ How Season Downloads Work</h2>
-        <div style={{ color: '#b0b0c0', fontSize: '0.875rem', lineHeight: '1.5' }}>
-          <div className="mobile-card mb-1">
-            <div style={{ color: '#667eea', fontWeight: '600', marginBottom: '0.5rem' }}>
-              🎯 Search Priority
-            </div>
-            <div style={{ fontSize: '0.8rem' }}>
-              1. Complete season packs (preferred)<br />
-              2. Individual episodes if no pack found
-            </div>
-          </div>
-          
-          <div className="mobile-card mb-1">
-            <div style={{ color: '#667eea', fontWeight: '600', marginBottom: '0.5rem' }}>
-              🏆 Quality Order
-            </div>
-            <div style={{ fontSize: '0.8rem' }}>
-              4K WEB-DL → 1080p WEB-DL → 4K → 1080p<br />
-              <em style={{ color: '#ff9800' }}>Only 1080p+ quality accepted</em>
-            </div>
-          </div>
-          
-          <div className="mobile-grid-2">
-            <div className="mobile-card">
-              <div style={{ color: '#667eea', fontWeight: '600', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
-                🌱 Selection
-              </div>
-              <div style={{ fontSize: '0.75rem' }}>
-                Picks torrents with most seeders
-              </div>
-            </div>
-            
-            <div className="mobile-card">
-              <div style={{ color: '#667eea', fontWeight: '600', marginBottom: '0.5rem', fontSize: '0.8rem' }}>
-                💾 Storage
-              </div>
-              <div style={{ fontSize: '0.75rem' }}>
-                Requires 5GB+ free space
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <p className="footnote">
+        Looks for a complete season pack first, then single episodes. Only 1080p or better (4K WEB-DL → 1080p WEB-DL → 4K → 1080p), most seeders wins. Needs 5 GB free.
+      </p>
+    </>
   );
 }
 

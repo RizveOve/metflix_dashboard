@@ -7,13 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'MetFlix Dashboard',
         short_name: 'MetFlix',
         description: 'Manage qBittorrent, WireGuard, and OMV servers',
-        theme_color: '#1a1a2e',
-        background_color: '#0f0f0f',
+        theme_color: '#0b0b0c',
+        background_color: '#0b0b0c',
         display: 'standalone',
         icons: [
           {

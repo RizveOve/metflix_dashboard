@@ -344,9 +344,10 @@ router.get('/search/plugins', async (req, res) => {
 
 // Start search
 router.post('/search/start', async (req, res) => {
+  // Declared outside try so the catch block can log them too
+  const { pattern, plugins, category } = req.body;
   try {
     const serverUrl = getServerUrl();
-    const { pattern, plugins, category } = req.body;
     
     // Log the search start
     const logEntry = addSearchLog(pattern, plugins, category, 'started');

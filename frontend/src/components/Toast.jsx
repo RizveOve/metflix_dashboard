@@ -1,49 +1,21 @@
 import { useEffect } from 'react';
+import Icon from './Icon';
 
-function Toast({ message, type = 'info', onClose, duration = 3000 }) {
+const icons = { success: 'check', error: 'alert', warning: 'alert', info: 'alert' };
+
+function Toast({ id, message, type = 'info', onClose, duration = 3000 }) {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, duration);
+    const timer = setTimeout(() => onClose(id), duration);
     return () => clearTimeout(timer);
-  }, [duration, onClose]);
-
-  const getIcon = () => {
-    switch (type) {
-      case 'success': return '✓';
-      case 'error': return '✗';
-      case 'warning': return '⚠';
-      default: return 'ℹ';
-    }
-  };
+  }, [id, duration, onClose]);
 
   return (
-    <div className={`toast ${type} slide-up`}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{getIcon()}</span>
-        <span style={{ flex: 1, fontSize: '0.875rem', lineHeight: '1.3' }}>{message}</span>
-        <button
-          onClick={onClose}
-          className="touchable"
-          style={{
-            background: 'rgba(255,255,255,0.2)',
-            border: 'none',
-            color: 'white',
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.2rem',
-            padding: 0,
-            flexShrink: 0
-          }}
-        >
-          ×
-        </button>
-      </div>
+    <div className={`toast toast-${type}`} role="status">
+      <Icon name={icons[type] || 'alert'} size={16} className="toast-icon" />
+      <span className="toast-msg">{message}</span>
+      <button className="toast-close" onClick={() => onClose(id)} aria-label="Dismiss">
+        <Icon name="x" size={14} />
+      </button>
     </div>
   );
 }
